@@ -95,13 +95,13 @@ router.get("/grades/stats", async (req, res) => {
       {
         $group: {
           _id: "$learner_id",
-          total: { $learner: "$learner_id" },
+          learner: { $learner: "$learner_id" },
         },
       },
       {
         $group: {
           _id: null,
-          totalLearners: { $sum: "$total" },
+          totalLearners: { $sum: "$learner" },
           above70: {
             $sum: { $cond: [{ $gt: ["$weightedAverage", 70] }, 1, 0] },
           },
