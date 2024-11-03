@@ -81,4 +81,58 @@ router.get("/learner/:id/avg-class", async (req, res) => {
   else res.send(result).status(200);
 });
 
+router.get("/grades/stats", async (req, res) => {
+  let collection = await db.collection("grades");
+
+  try {
+    const stats = await collection.aggregate([
+      {
+        $unwind: { path: "$scores" },
+      },
+      {
+        $match: { learner_id: Number(req.params.id) },
+      },
+      {
+        $group: {
+          _id: "$learner_id",
+          total: { $learner: "$learner_id" },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalLearners: { $sum: "$total" },
+          above70: {
+            $sum: { $cond: [{ $gt: ["$weightedAverage", 70] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          _learner_id: "$_id",
+          totalLearners: 1,
+          above70: 1,
+          percentageAbove70: {
+            $multiply: [{ $divide: ["$above70", "$totalLearners"] }, 100],
+          },
+        },
+      },
+    ]);
+
+    if (stats.length === 0) {
+      return res.status(200).json({
+        totalLearners: 0,
+        above70: 0,
+        percentageAbove70: 0,
+      });
+    }
+
+    res.status(200).json(stats[0]);
+  } catch (e) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
